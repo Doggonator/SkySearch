@@ -18,7 +18,10 @@ def search_duckduckgo(query):
     url = "https://duckduckgo.com/html/"
     params = {"q": query}
     print(query)
+    i = 1
     for proxies in p:
+        st.status("Trying proxy #"+i)
+        i += 1
         try:
             #send the search request through the proxy
             response = requests.get(url, params=params, proxies=proxies, timeout=1)#1 second timeout, using the proxies
@@ -30,7 +33,10 @@ def search_duckduckgo(query):
             print(f"Error: {e}")
     return None
 def get_html_from_site(url):
+    i = 1
     for proxies in p:
+        st.status("Trying proxy #"+i)
+        i += 1
         try:
             #send the search request through the proxy
             response = requests.get(url, proxies=proxies, timeout=1)#1 second timeout, using the proxies
@@ -76,7 +82,10 @@ def fetch_js_files(html, base_url):#to make our complete viewer, we need js file
     
     # Fetch each JS file
     js_content = {}
+    i = 1
     for proxies in p:
+        st.status("Trying proxy #"+i)
+        i += 1
         for js_url in js_files:
             try:
                 response = requests.get(js_url, proxies=proxies, timeout=10)
@@ -113,4 +122,4 @@ if query != st.session_state.prev_query:
                             html += f"<script>{js_content}</script>"
                         st.components.v1.html(html, height=600, scrolling=True)
     else:
-        st.error("Print failed, likely due to a proxy failure or a lack of response from our search backend")
+        st.error("Search failed, likely due to a proxy failure or a lack of response from our search backend")
