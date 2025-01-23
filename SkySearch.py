@@ -20,7 +20,7 @@ def search_duckduckgo(query):
     print(query)
     i = 1
     for proxies in p:
-        st.status("Trying proxy #"+i)
+        st.status("Trying proxy #"+str(i))
         i += 1
         try:
             #send the search request through the proxy
@@ -35,7 +35,7 @@ def search_duckduckgo(query):
 def get_html_from_site(url):
     i = 1
     for proxies in p:
-        st.status("Trying proxy #"+i)
+        st.status("Trying proxy #"+str(i))
         i += 1
         try:
             #send the search request through the proxy
@@ -84,7 +84,7 @@ def fetch_js_files(html, base_url):#to make our complete viewer, we need js file
     js_content = {}
     i = 1
     for proxies in p:
-        st.status("Trying proxy #"+i)
+        st.status("Trying proxy #"+str(i))
         i += 1
         for js_url in js_files:
             try:
