@@ -24,7 +24,8 @@ def search_duckduckgo(query):
             response = requests.get(url, params=params, proxies=proxies, timeout=1)#1 second timeout, using the proxies
             response.raise_for_status()  #raise an error for bad HTTP responses
             print("Success")
-            return response.text
+            if len(extract_links(response)) != 0:#make sure we get a response that is not rate limited
+                return response.text
         except requests.exceptions.RequestException as e:
             print(f"Error: {e}")
     return None
