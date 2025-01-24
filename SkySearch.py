@@ -14,10 +14,11 @@ st.title("SkySearch Proxy Engine")
 #        {"https": "3.145.65.108:8090", "http": "74.48.78.52:80"},
 #        {"https": "24.49.117.86:8888", "http": "107.174.127.90:3128"}]
 if "p" not in st.session_state:
-    st.session_state.p = [{"https": "152.26.229.52:9443"},
+    st.session_state.p = [
         {"https": "69.49.228.101:3128"},
         {"https": "152.26.229.34:9443"},
         {"https": "38.180.138.18:3128"},
+        {"https": "152.26.229.52:9443"},
         {"https": "69.75.172.51:8080"},
         {"https": "3.144.74.192:8090"},
         {"https": "3.145.65.108:8090"},
@@ -39,6 +40,7 @@ def search_duckduckgo(query):
                         #return response.text
                         ddgs = DDGS(proxy=proxy["https"], timeout=5)  # "tb" proxy is an alias for "socks5://127.0.0.1:9150"
                         results = ddgs.text(query, max_results=10)
+
                         print(proxy["https"])
                         #swap out to use the best proxy we have, which is this one, if it is not the first in the list already
                         if i != 1:
