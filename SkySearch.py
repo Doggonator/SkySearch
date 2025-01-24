@@ -29,33 +29,35 @@ def search_duckduckgo(query):
     #url = "https://duckduckgo.com/html/"
     #params = {"q": query}
     with st.spinner("Getting search results..."):
-        try:
-            #send the search request through the proxy
-            if use_proxies:
-                #response = requests.get(url, params=params, proxies=proxies, timeout=1)#1 second timeout, using the proxies
-                #response.raise_for_status()  #raise an error for bad HTTP responses
-                #return response.text
-                ddgs = DDGS(proxy="tb", timeout=20)  # "tb" is an alias for "socks5://127.0.0.1:9150"
-                results = ddgs.text(query, max_results=10)
-                return results
-            else:
-                #response = requests.get(url, params=params, timeout=1)
-                #response.raise_for_status()  #raise an error for bad HTTP responses
-                #return response.text
-                return DDGS().text(query, max_results = 10)
-        except Exception as e:
-            print(f"Error: {e}")
+        for proxy in p:
+            try:
+                #send the search request through the proxy
+                if use_proxies:
+                    #response = requests.get(url, params=params, proxies=proxies, timeout=1)#1 second timeout, using the proxies
+                    #response.raise_for_status()  #raise an error for bad HTTP responses
+                    #return response.text
+                    ddgs = DDGS(proxy=proxy["https"], timeout=2)  # "tb" proxy is an alias for "socks5://127.0.0.1:9150"
+                    results = ddgs.text(query, max_results=10)
+                    return results
+                else:
+                    #response = requests.get(url, params=params, timeout=1)
+                    #response.raise_for_status()  #raise an error for bad HTTP responses
+                    #return response.text
+                    return DDGS().text(query, max_results = 10)
+            except Exception as e:
+                print(f"Error: {e}")
+                print("Proxy used (if proxies active): "+proxy["https"])
         return None
 def get_html_from_site(url):
     for proxies in p:
         try:
             #send the search request through the proxy
             if use_proxies:
-                response = requests.get(url, proxies=proxies, timeout=1)#1 second timeout, using the proxies
+                response = requests.get(url, proxies=proxies, timeout=2)#1 second timeout, using the proxies
                 response.raise_for_status()  #raise an error for bad HTTP responses
                 return response.text
             else:
-                response = requests.get(url, timeout=1)#1 second timeout, using the proxies
+                response = requests.get(url, timeout=2)#1 second timeout, using the proxies
                 response.raise_for_status()  #raise an error for bad HTTP responses
                 return response.text
         except requests.exceptions.RequestException as e:
