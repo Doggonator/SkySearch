@@ -3,9 +3,7 @@ import streamlit as st
 from bs4 import BeautifulSoup
 from duckduckgo_search import DDGS
 st.set_page_config("SkySearch")
-st.title("Get search results")
-if "prev_query" not in st.session_state:
-    st.session_state.prev_query = ""
+st.title("SkySearch Proxy Engine")
 #each proxy (from https://spys.one/free-proxy-list/US/)
 #p = [{"https": "152.26.229.52:9443", "http": "154.16.146.46:80"}, 
 #        {"https": "69.49.228.101:3128", "http": "212.56.35.27:3128"}, 
@@ -28,39 +26,36 @@ def search_duckduckgo(query):
     #url = "https://duckduckgo.com/html/"
     #params = {"q": query}
     with st.spinner("Getting search results..."):
-        proxy_try = st.status("Booting up systems")
-        i = 1
-        for proxy in p:
-            try:
-                #send the search request through the proxy
-                if use_proxies:
-                    proxy_try.update(label = ("Now trying proxy: "+str(i)))
-                    i += 1
-                    #response = requests.get(url, params=params, proxies=proxies, timeout=1)#1 second timeout, using the proxies
-                    #response.raise_for_status()  #raise an error for bad HTTP responses
-                    #return response.text
-                    ddgs = DDGS(proxy=proxy["https"], timeout=5)  # "tb" proxy is an alias for "socks5://127.0.0.1:9150"
-                    results = ddgs.text(query, max_results=10)
-                    print(proxy["https"])
-                    return results
-                else:
-                    #response = requests.get(url, params=params, timeout=1)
-                    #response.raise_for_status()  #raise an error for bad HTTP responses
-                    #return response.text
-                    return DDGS().text(query, max_results = 10)
-            except Exception as e:
-                print(f"Error: {e}")
-                print("Proxy used (if proxies active): "+proxy["https"])
-        return None
+        with st.status("Booting up systems") as proxy_try:
+            i = 1
+            for proxy in p:
+                try:
+                    #send the search request through the proxy
+                    if use_proxies:
+                        proxy_try.update(label = ("Now trying proxy: "+str(i)))
+                        i += 1
+                        #response = requests.get(url, params=params, proxies=proxies, timeout=1)#1 second timeout, using the proxies
+                        #response.raise_for_status()  #raise an error for bad HTTP responses
+                        #return response.text
+                        ddgs = DDGS(proxy=proxy["https"], timeout=5)  # "tb" proxy is an alias for "socks5://127.0.0.1:9150"
+                        results = ddgs.text(query, max_results=10)
+                        print(proxy["https"])
+                        return results
+                    else:
+                        proxy_try.update(label="Getting non-proxied results")
+                        #response = requests.get(url, params=params, timeout=1)
+                        #response.raise_for_status()  #raise an error for bad HTTP responses
+                        #return response.text
+                        return DDGS().text(query, max_results = 10)
+                except Exception as e:
+                    print(f"Error: {e}")
+                    print("Proxy used (if proxies active): "+proxy["https"])
+            return None
 def get_html_from_site(url):
-    proxy_try = st.status("Booting up systems")
-    i = 1
     for proxies in p:
         try:
             #send the search request through the proxy
             if use_proxies:
-                proxy_try.update(label = ("Now trying proxy: "+str(i)))
-                i += 1
                 response = requests.get(url, proxies=proxies, timeout=5)#5 second timeout, using the proxies
                 response.raise_for_status()  #raise an error for bad HTTP responses
                 return response.text
@@ -95,7 +90,7 @@ def extract_links(html):
     
     return links
 query = st.text_input("Input your query to search here: ")
-if query != st.session_state.prev_query:
+if query != "":
     result = search_duckduckgo(query)
     if result:
         #links = extract_links(result)
