@@ -2,6 +2,7 @@ import requests
 import streamlit as st
 from bs4 import BeautifulSoup
 import random
+from duckduckgo_search import DDGS
 st.set_page_config("SkySearch")
 st.title("Get search results")
 if "prev_query" not in st.session_state:
@@ -25,23 +26,26 @@ p = [{"https": "152.26.229.52:9443"},
         {"https": "24.49.117.86:8888"}]
 use_proxies = st.toggle("Use proxies? Recommended.")
 def search_duckduckgo(query):
-    url = "https://duckduckgo.com/html/"
-    params = {"q": query}
-    print(query)
-    for proxies in p:
+    #url = "https://duckduckgo.com/html/"
+    #params = {"q": query}
+    with st.spinner("Getting search results..."):
         try:
             #send the search request through the proxy
             if use_proxies:
-                response = requests.get(url, params=params, proxies=proxies, timeout=1)#1 second timeout, using the proxies
+                """response = requests.get(url, params=params, proxies=proxies, timeout=1)#1 second timeout, using the proxies
                 response.raise_for_status()  #raise an error for bad HTTP responses
-                return response.text
+                return response.text"""
+                ddgs = DDGS(proxy="tb", timeout=20)  # "tb" is an alias for "socks5://127.0.0.1:9150"
+                results = ddgs.text(query, max_results=10)
+                return results
             else:
-                response = requests.get(url, params=params, timeout=1)
+                """response = requests.get(url, params=params, timeout=1)
                 response.raise_for_status()  #raise an error for bad HTTP responses
-                return response.text
-        except requests.exceptions.RequestException as e:
+                return response.text"""
+                return DDGS().text(query, max_results = 10)
+        except Exception as e:
             print(f"Error: {e}")
-    return None
+        return None
 def get_html_from_site(url):
     for proxies in p:
         try:
@@ -85,20 +89,22 @@ if query != st.session_state.prev_query:
     random.shuffle(p)#shuffle our proxies, to reduce timeouts
     result = search_duckduckgo(query)
     if result:
-        links = extract_links(result)
+        #links = extract_links(result)
+        #print(links)
+        #if len(links) == 0:
+        #    st.error("Search backend rate limit error, please try again later")
+        links = result
         print(links)
-        if len(links) == 0:
-            st.error("Search backend rate limit error, please try again later")
         #Turn those links into buttons that go to the webpage
         for link in links:
             c1, c2 = st.columns(2)
             with c1:
-                st.link_button(link["text"], link["url"])
+                st.link_button(link["title"], link["href"])
             with c2:
-                text = "Preview Site ("+link["text"]+")"
+                text = "Preview Site ("+link["title"]+")"
                 if st.button(text):
                     with st.spinner("Loading preview for site..."):
-                        html = get_html_from_site(link["url"])
+                        html = get_html_from_site(link["href"])
                         st.components.v1.html(html, height=600, scrolling=True)
     else:
         st.error("Search failed, likely due to a proxy failure or a lack of response from our search backend")
