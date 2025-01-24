@@ -13,7 +13,8 @@ st.title("SkySearch Proxy Engine")
 #        {"https": "3.144.74.192:8090", "http": "103.152.112.120:80"},
 #        {"https": "3.145.65.108:8090", "http": "74.48.78.52:80"},
 #        {"https": "24.49.117.86:8888", "http": "107.174.127.90:3128"}]
-p = [{"https": "152.26.229.52:9443"},
+if "p" not in st.session_state:
+    st.session_state.p = [{"https": "152.26.229.52:9443"},
         {"https": "69.49.228.101:3128"},
         {"https": "152.26.229.34:9443"},
         {"https": "38.180.138.18:3128"},
@@ -28,18 +29,23 @@ def search_duckduckgo(query):
     with st.spinner("Getting search results..."):
         with st.status("Booting up systems") as proxy_try:
             i = 1
-            for proxy in p:
+            for proxy in st.session_state.p:
                 try:
                     #send the search request through the proxy
                     if use_proxies:
                         proxy_try.update(label = ("Now trying proxy: "+str(i)))
-                        i += 1
                         #response = requests.get(url, params=params, proxies=proxies, timeout=1)#1 second timeout, using the proxies
                         #response.raise_for_status()  #raise an error for bad HTTP responses
                         #return response.text
                         ddgs = DDGS(proxy=proxy["https"], timeout=5)  # "tb" proxy is an alias for "socks5://127.0.0.1:9150"
                         results = ddgs.text(query, max_results=10)
                         print(proxy["https"])
+                        #swap out to use the best proxy we have, which is this one, if it is not the first in the list already
+                        if i != 1:
+                            this = st.session_state.p[i-1]#make a temp
+                            st.session_state.p[i-1] = st.session_state.p[0]#replace this with index 0
+                            st.session_state.p[0] = this#Set index zero to this
+                        i += 1
                         return results
                     else:
                         proxy_try.update(label="Getting non-proxied results")
@@ -52,7 +58,7 @@ def search_duckduckgo(query):
                     print("Proxy used (if proxies active): "+proxy["https"])
             return None
 def get_html_from_site(url):
-    for proxies in p:
+    for proxies in st.session_state.p:
         try:
             #send the search request through the proxy
             if use_proxies:
