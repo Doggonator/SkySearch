@@ -1,4 +1,4 @@
-#Version 1.1
+#Version 1.2
 import requests
 import streamlit as st
 from bs4 import BeautifulSoup
@@ -110,28 +110,85 @@ def extract_links(html):
         print(href)
    
     return links
+def fetch_and_inject_css(html_content):#add the css files into the html
+    try:#in case proxy errors
+        #parse the HTML
+        soup = BeautifulSoup(html_content, 'html.parser')
+        
+        #find all <link> tags that link to CSS files
+        link_tags = soup.find_all('link', rel='stylesheet')
+        
+        for link in link_tags:
+            css_url = link['href']
+            
+            #fetch the CSS content
+            try:
+                if use_proxies:
+                    for proxy in st.session_state.p:
+                        try:
+                            response = requests.get(css_url, proxies = proxy, timeout = 5)
+                            response.raise_for_status()
+                            css_content = response.text
+                            
+                            #create a <style> tag with the fetched CSS
+                            style_tag = soup.new_tag('style')
+                            style_tag.string = css_content
+                            
+                            #replace the <link> tag with the <style> tag
+                            link.replace_with(style_tag)
+                        except:
+                            print("Likely timed out with proxy: "+proxy)
+                else:
+                    response = requests.get(css_url)
+                    response.raise_for_status()
+                    css_content = response.text
+                    
+                    #create a <style> tag with the fetched CSS
+                    style_tag = soup.new_tag('style')
+                    style_tag.string = css_content
+                    
+                    #replace the <link> tag with the <style> tag
+                    link.replace_with(style_tag)
+            except requests.RequestException as e:
+                print(f"Failed to fetch CSS from {css_url}: {e}")
+        
+        # Return the modified HTML
+        return str(soup)
+    except:
+        return html_content
 def inject_js_to_html(html_content, url):
-    soup = BeautifulSoup(html_content, 'html.parser')
-   
-    #find all <script> tags that reference external JS files
-    js_files = [script['src'] for script in soup.find_all('script', src=True)]
-   
-    #step 3: Download the JS files
-    js_contents = {}
-    for js_file in js_files:
-        if js_file.startswith('http'):  #check if the URL is absolute
-            js_url = js_file
-        else:  #if it's a relative URL, make it absolute
-            js_url = requests.compat.urljoin(url, js_file)
-        js_response = requests.get(js_url)
-        js_contents[js_file] = js_response.text
-   
-    #step 4: inject JS files into the HTML
-    for js_file, js_content in js_contents.items():
-        #inject the JS content directly into the HTML using a <script> tag
-        script_tag = f'<script>{js_content}</script>'
-        soup.body.append(script_tag)
-    return str(soup)#return this updated html
+    try:#in case there are problems with the proxies
+        soup = BeautifulSoup(html_content, 'html.parser')
+    
+        #find all <script> tags that reference external JS files
+        js_files = [script['src'] for script in soup.find_all('script', src=True)]
+    
+        #step 3: Download the JS files
+        js_contents = {}
+        for js_file in js_files:
+            if js_file.startswith('http'):  #check if the URL is absolute
+                js_url = js_file
+            else:  #if it's a relative URL, make it absolute
+                js_url = requests.compat.urljoin(url, js_file)
+            if use_proxies:
+                for proxy in st.session_state.p:
+                    try:
+                        js_response = requests.get(js_url, proxies = proxy, timeout = 5)
+                        js_contents[js_file] = js_response.text
+                    except:
+                        print("Likely timed out with proxy: "+proxy)
+            else:
+                js_response = requests.get(js_url)
+                js_contents[js_file] = js_response.text
+    
+        #step 4: inject JS files into the HTML
+        for js_file, js_content in js_contents.items():
+            #inject the JS content directly into the HTML using a <script> tag
+            script_tag = f'<script>{js_content}</script>'
+            soup.body.append(script_tag)
+        return str(soup)#return this updated html
+    except:
+        return html_content
 if st.session_state.html == "":
     query = st.text_input("Input your query to search here: ")
     if query != "":
@@ -155,8 +212,12 @@ if st.session_state.html == "":
                     st.session_state.b_id += 1
                     if st.button(text):
                         with st.spinner("Loading preview for site..."):
+                            print("Getting html")
                             html = get_html_from_site(link["href"])#get html
+                            print("Injecting JS")
                             html = inject_js_to_html(html, link["href"])#inject js
+                            print("Injecting CSS")
+                            html = fetch_and_inject_css(html)#inject css
                             st.session_state.html = html#update html
                             st.rerun()#rerun
         else:
