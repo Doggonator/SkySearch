@@ -7,14 +7,22 @@ st.title("Get search results")
 if "prev_query" not in st.session_state:
     st.session_state.prev_query = ""
 #each proxy (from https://spys.one/free-proxy-list/US/)
-p = [{"https": "152.26.229.52:9443", "http": "154.16.146.46:80"}, 
+"""p = [{"https": "152.26.229.52:9443", "http": "154.16.146.46:80"}, 
         {"https": "69.49.228.101:3128", "http": "212.56.35.27:3128"}, 
         {"https": "152.26.229.34:9443", "http": "89.117.22.218:8080"},
         {"https": "38.180.138.18:3128", "http": "103.152.112.157:80"},
         {"https": "69.75.172.51:8080", "http": "23.82.137.158:80"},
         {"https": "3.144.74.192:8090", "http": "103.152.112.120:80"},
         {"https": "3.145.65.108:8090", "http": "74.48.78.52:80"},
-        {"https": "24.49.117.86:8888", "http": "107.174.127.90:3128"}]
+        {"https": "24.49.117.86:8888", "http": "107.174.127.90:3128"}]"""
+p = [{"https": "152.26.229.52:9443"},
+        {"https": "69.49.228.101:3128"},
+        {"https": "152.26.229.34:9443"},
+        {"https": "38.180.138.18:3128"},
+        {"https": "69.75.172.51:8080"},
+        {"https": "3.144.74.192:8090"},
+        {"https": "3.145.65.108:8090"},
+        {"https": "24.49.117.86:8888"}]
 use_proxies = st.toggle("Use proxies? Recommended.")
 def search_duckduckgo(query):
     url = "https://duckduckgo.com/html/"
@@ -26,18 +34,11 @@ def search_duckduckgo(query):
             if use_proxies:
                 response = requests.get(url, params=params, proxies=proxies, timeout=1)#1 second timeout, using the proxies
                 response.raise_for_status()  #raise an error for bad HTTP responses
-                if len(extract_links(response.text)) != 0:#make sure we get a response that is not rate limited
-                    print("Success")
-                    return response.text
-                print(f"Error: Rate Limited")
+                return response.text
             else:
                 response = requests.get(url, params=params, timeout=1)
                 response.raise_for_status()  #raise an error for bad HTTP responses
-                if len(extract_links(response.text)) != 0:#make sure we get a response that is not rate limited
-                    print("Success")
-                    return response.text
-                print(f"Error: Rate Limited")
-                break
+                return response.text
         except requests.exceptions.RequestException as e:
             print(f"Error: {e}")
     return None
