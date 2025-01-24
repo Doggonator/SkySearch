@@ -28,14 +28,18 @@ def search_duckduckgo(query):
     #url = "https://duckduckgo.com/html/"
     #params = {"q": query}
     with st.spinner("Getting search results..."):
+        proxy_try = st.status("Booting up systems")
+        i = 1
         for proxy in p:
             try:
                 #send the search request through the proxy
                 if use_proxies:
+                    proxy_try.update(label = ("Now trying proxy: "+str(i)))
+                    i += 1
                     #response = requests.get(url, params=params, proxies=proxies, timeout=1)#1 second timeout, using the proxies
                     #response.raise_for_status()  #raise an error for bad HTTP responses
                     #return response.text
-                    ddgs = DDGS(proxy=proxy["https"], timeout=2)  # "tb" proxy is an alias for "socks5://127.0.0.1:9150"
+                    ddgs = DDGS(proxy=proxy["https"], timeout=5)  # "tb" proxy is an alias for "socks5://127.0.0.1:9150"
                     results = ddgs.text(query, max_results=10)
                     print(proxy["https"])
                     return results
@@ -49,15 +53,19 @@ def search_duckduckgo(query):
                 print("Proxy used (if proxies active): "+proxy["https"])
         return None
 def get_html_from_site(url):
+    proxy_try = st.status("Booting up systems")
+    i = 1
     for proxies in p:
         try:
             #send the search request through the proxy
             if use_proxies:
-                response = requests.get(url, proxies=proxies, timeout=2)#1 second timeout, using the proxies
+                proxy_try.update(label = ("Now trying proxy: "+str(i)))
+                i += 1
+                response = requests.get(url, proxies=proxies, timeout=5)#5 second timeout, using the proxies
                 response.raise_for_status()  #raise an error for bad HTTP responses
                 return response.text
             else:
-                response = requests.get(url, timeout=2)#1 second timeout, using the proxies
+                response = requests.get(url, timeout=5)#5 second timeout, using the proxies
                 response.raise_for_status()  #raise an error for bad HTTP responses
                 return response.text
         except requests.exceptions.RequestException as e:
