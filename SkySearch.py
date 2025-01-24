@@ -1,7 +1,6 @@
 import requests
 import streamlit as st
 from bs4 import BeautifulSoup
-import random
 from duckduckgo_search import DDGS
 st.set_page_config("SkySearch")
 st.title("Get search results")
@@ -38,6 +37,7 @@ def search_duckduckgo(query):
                     #return response.text
                     ddgs = DDGS(proxy=proxy["https"], timeout=2)  # "tb" proxy is an alias for "socks5://127.0.0.1:9150"
                     results = ddgs.text(query, max_results=10)
+                    print(proxy["https"])
                     return results
                 else:
                     #response = requests.get(url, params=params, timeout=1)
@@ -88,7 +88,6 @@ def extract_links(html):
     return links
 query = st.text_input("Input your query to search here: ")
 if query != st.session_state.prev_query:
-    random.shuffle(p)#shuffle our proxies, to reduce timeouts
     result = search_duckduckgo(query)
     if result:
         #links = extract_links(result)
