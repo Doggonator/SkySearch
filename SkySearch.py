@@ -1,13 +1,12 @@
-#Version 1.4a
 import requests
 import streamlit as st
 from bs4 import BeautifulSoup
 from duckduckgo_search import DDGS
 from st_click_detector import click_detector
 import urllib.parse#for getting base urls of pages
-st.set_page_config("SkySearch")
+st.set_page_config("SkySearch", layout="wide")#layout wide allows for canvases to be better (viewing in the web)
 st.title("SkySearch Proxy Engine")
-st.caption("Version 1.4a")
+st.caption("Version 1.4b")
 #each proxy (from https://spys.one/free-proxy-list/US/)
 #p = [{"https": "152.26.229.52:9443", "http": "154.16.146.46:80"},
 #        {"https": "69.49.228.101:3128", "http": "212.56.35.27:3128"},
