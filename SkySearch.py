@@ -1,4 +1,4 @@
-#Version 1.2
+#Version 1.21
 import requests
 import streamlit as st
 from bs4 import BeautifulSoup
@@ -205,12 +205,10 @@ if st.session_state.html == "":
             for link in links:
                 c1, c2 = st.columns(2)
                 with c1:
-                    st.link_button(link["title"]+str(st.session_state.b_id), link["href"])
-                    st.session_state.b_id += 1
+                    st.link_button(link["title"], link["href"])
                 with c2:
-                    text = "Preview Site ("+link["title"]+")"+str(st.session_state.b_id)
-                    st.session_state.b_id += 1
-                    if st.button(text):
+                    text = "Preview Site ("+link["title"]+")"
+                    if st.button(text, key = str(st.session_state.b_id)):
                         with st.spinner("Loading preview for site..."):
                             print("Getting html")
                             html = get_html_from_site(link["href"])#get html
@@ -220,10 +218,12 @@ if st.session_state.html == "":
                             html = fetch_and_inject_css(html)#inject css
                             st.session_state.html = html#update html
                             st.rerun()#rerun
+                    st.session_state.b_id += 1
         else:
             st.error("Search failed, likely due to a proxy failure or a lack of response from our search backend")
 else:#we are now rendering the html
     st.components.v1.html(st.session_state.html, height=600, scrolling=True)
+    st.caption("Note that links do not yet function.")
     if st.button("Back to search"):
         st.session_state.html = ""
         st.rerun()#go back to search
