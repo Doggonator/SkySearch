@@ -1,4 +1,4 @@
-#Version 1.32
+#Version 1.33
 import requests
 import streamlit as st
 from bs4 import BeautifulSoup
@@ -7,7 +7,7 @@ from st_click_detector import click_detector
 import urllib.parse#for getting base urls of pages
 st.set_page_config("SkySearch")
 st.title("SkySearch Proxy Engine")
-st.caption("Version 1.32")
+st.caption("Version 1.33")
 #each proxy (from https://spys.one/free-proxy-list/US/)
 #p = [{"https": "152.26.229.52:9443", "http": "154.16.146.46:80"},
 #        {"https": "69.49.228.101:3128", "http": "212.56.35.27:3128"},
@@ -31,6 +31,8 @@ if "html" not in st.session_state:
     st.session_state.html = ""
 if "b_id" not in st.session_state:#button id
     st.session_state.b_id = 0
+if "g_mode" not in st.session_state:#game mode
+    st.session_state.g_mode = False
 use_proxies = st.toggle("Use proxies? Not recommended unless on a very restricted network.")
 def search_duckduckgo(query):
     #url = "https://duckduckgo.com/html/"
@@ -255,22 +257,29 @@ else:#we are now rendering the html
     if st.button("Back to search"):#back to search button, which must be above the html
         st.session_state.html = ""
         st.rerun()#go back to search
-    click_id = click_detector(st.session_state.html)#render html and find clicks
-    if click_id:
-        with spinner_slot.container():
-            container = st.empty()#status updates
-            with st.spinner("Loading site..."):
-                with container.container():
-                    st.status("Loading HTML")
-                html = get_html_from_site(click_id)#get html
-                with container.container():
-                    st.status("Loading JS")
-                html = inject_js_to_html(html, click_id)#inject js
-                with container.container():
-                    st.status("Loading CSS")
-                html = fetch_and_inject_css(html, click_id)#inject css
-                with container.container():
-                    st.status("Adding Link IDs")
-                html = add_link_ids(html, click_id)#add link ids for click detection
-                st.session_state.html = html#update html
-                st.rerun()#rerun
+    st.caption("Game mode disables links, but allows games to function")
+    if st.button("Toggle game mode (Currently active: "+str(st.session_state.g_mode)+")"):#Allows games to work better if we use a different canvas type
+        st.session_state.g_mode = not st.session_state.g_mode
+        st.rerun()
+    if st.session_state.g_mode == False:
+        click_id = click_detector(st.session_state.html)#render html and find clicks
+        if click_id:
+            with spinner_slot.container():
+                container = st.empty()#status updates
+                with st.spinner("Loading site..."):
+                    with container.container():
+                        st.status("Loading HTML")
+                    html = get_html_from_site(click_id)#get html
+                    with container.container():
+                        st.status("Loading JS")
+                    html = inject_js_to_html(html, click_id)#inject js
+                    with container.container():
+                        st.status("Loading CSS")
+                    html = fetch_and_inject_css(html, click_id)#inject css
+                    with container.container():
+                        st.status("Adding Link IDs")
+                    html = add_link_ids(html, click_id)#add link ids for click detection
+                    st.session_state.html = html#update html
+                    st.rerun()#rerun
+    else:
+        st.components.v1.html(st.session_state.html, scrolling = True, height = 600)
