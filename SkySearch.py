@@ -1,4 +1,4 @@
-#Version 1.3
+#Version 1.31
 import requests
 import streamlit as st
 from bs4 import BeautifulSoup
@@ -6,6 +6,7 @@ from duckduckgo_search import DDGS
 from st_click_detector import click_detector
 st.set_page_config("SkySearch")
 st.title("SkySearch Proxy Engine")
+st.caption("Version 1.31")
 #each proxy (from https://spys.one/free-proxy-list/US/)
 #p = [{"https": "152.26.229.52:9443", "http": "154.16.146.46:80"},
 #        {"https": "69.49.228.101:3128", "http": "212.56.35.27:3128"},
@@ -238,6 +239,9 @@ if st.session_state.html == "":
             st.error("Search failed, likely due to a proxy failure or a lack of response from our search backend")
 else:#we are now rendering the html
     spinner_slot = st.empty()
+    if st.button("Back to search"):#back to search button, which must be above the html
+        st.session_state.html = ""
+        st.rerun()#go back to search
     click_id = click_detector(st.session_state.html)#render html and find clicks
     if click_id:
         with spinner_slot.container():
@@ -257,6 +261,3 @@ else:#we are now rendering the html
                 html = add_link_ids(html)#add link ids for click detection
                 st.session_state.html = html#update html
                 st.rerun()#rerun
-    if st.button("Back to search"):
-        st.session_state.html = ""
-        st.rerun()#go back to search
