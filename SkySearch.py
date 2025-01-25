@@ -1,12 +1,13 @@
-#Version 1.31
+#Version 1.32
 import requests
 import streamlit as st
 from bs4 import BeautifulSoup
 from duckduckgo_search import DDGS
 from st_click_detector import click_detector
+import urllib.parse#for getting base urls of pages
 st.set_page_config("SkySearch")
 st.title("SkySearch Proxy Engine")
-st.caption("Version 1.31")
+st.caption("Version 1.32")
 #each proxy (from https://spys.one/free-proxy-list/US/)
 #p = [{"https": "152.26.229.52:9443", "http": "154.16.146.46:80"},
 #        {"https": "69.49.228.101:3128", "http": "212.56.35.27:3128"},
@@ -112,7 +113,22 @@ def get_html_from_site(url):
 #        print(href)
 #  
 #    return links
-def fetch_and_inject_css(html_content):#add the css files into the html
+def ensure_has_base_link(path, link):
+    if path.startswith("http"):
+        return path
+    else:
+        #get base of link
+        url = link
+        parsed = urllib.parse.urlparse(url)
+        with_path = False#fragment because the base url get code is from https://stackoverflow.com/questions/35616434/how-can-i-get-the-base-of-a-url-in-python
+        path   = '/'.join(parsed.path.split('/')[:-1]) if with_path else ''
+        parsed = parsed._replace(path=path)
+        parsed = parsed._replace(params='')
+        parsed = parsed._replace(query='')
+        parsed = parsed._replace(fragment='')
+        base_url = parsed.geturl()+'/'
+        return base_url+path
+def fetch_and_inject_css(html_content,url):#add the css files into the html
     try:#in case proxy errors
         #parse the HTML
         soup = BeautifulSoup(html_content, 'html.parser')
@@ -128,7 +144,7 @@ def fetch_and_inject_css(html_content):#add the css files into the html
                 if use_proxies:
                     for proxy in st.session_state.p:
                         try:
-                            response = requests.get(css_url, proxies = proxy, timeout = 5)
+                            response = requests.get(ensure_has_base_link(css_url, url), proxies = proxy, timeout = 5)
                             response.raise_for_status()
                             css_content = response.text
                             
@@ -141,7 +157,7 @@ def fetch_and_inject_css(html_content):#add the css files into the html
                         except:
                             print("Likely timed out with proxy: "+proxy)
                 else:
-                    response = requests.get(css_url)
+                    response = requests.get(ensure_has_base_link(css_url, url))
                     response.raise_for_status()
                     css_content = response.text
                     
@@ -168,10 +184,7 @@ def inject_js_to_html(html_content, url):
         #step 3: Download the JS files
         js_contents = {}
         for js_file in js_files:
-            if js_file.startswith('http'):  #check if the URL is absolute
-                js_url = js_file
-            else:  #if it's a relative URL, make it absolute
-                js_url = requests.compat.urljoin(url, js_file)
+            js_url = ensure_has_base_link(js_file, url)
             if use_proxies:
                 for proxy in st.session_state.p:
                     try:
@@ -191,13 +204,13 @@ def inject_js_to_html(html_content, url):
         return str(soup)#return this updated html
     except:
         return html_content
-def add_link_ids(html):
+def add_link_ids(html, link):#link is used to add if we are referencing internals of this page or another page entirely
     soup = BeautifulSoup(html, 'html.parser')
-
     for i, tag in enumerate(soup.find_all('a'), start=1):
         if not tag.has_attr('id'):
             if tag.has_attr('href'):#add tags to the valid links that go to another site
-                tag['id'] = tag['href']
+                #we need to figure out if this link is referencing a page of the same site or another site
+                tag['id'] = ensure_has_base_link(tag['href'], link)
     return str(soup)
 if st.session_state.html == "":
     query = st.text_input("Input your query to search here: ")
@@ -228,10 +241,10 @@ if st.session_state.html == "":
                             html = inject_js_to_html(html, link["href"])#inject js
                             with container.container():
                                 st.status("Loading CSS")
-                            html = fetch_and_inject_css(html)#inject css
+                            html = fetch_and_inject_css(html, link["href"])#inject css
                             with container.container():
                                 st.status("Adding Link IDs")
-                            html = add_link_ids(html)#add link ids for click detection
+                            html = add_link_ids(html, link['href'])#add link ids for click detection
                             st.session_state.html = html#update html
                             st.rerun()#rerun
                     st.session_state.b_id += 1
@@ -255,9 +268,9 @@ else:#we are now rendering the html
                 html = inject_js_to_html(html, click_id)#inject js
                 with container.container():
                     st.status("Loading CSS")
-                html = fetch_and_inject_css(html)#inject css
+                html = fetch_and_inject_css(html, click_id)#inject css
                 with container.container():
                     st.status("Adding Link IDs")
-                html = add_link_ids(html)#add link ids for click detection
+                html = add_link_ids(html, click_id)#add link ids for click detection
                 st.session_state.html = html#update html
                 st.rerun()#rerun
