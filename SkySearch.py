@@ -6,7 +6,11 @@ from st_click_detector import click_detector
 import urllib.parse#for getting base urls of pages
 st.set_page_config("SkySearch", layout="wide")#layout wide allows for canvases to be better (viewing in the web)
 st.title("SkySearch Proxy Engine")
-st.caption("Version 1.4b")
+st.caption("Version 1.5a")
+st.write("----RULES----")
+st.caption("1. There is no SkySearch")
+st.caption("2. There is no SkySearch")
+st.caption("3. We don't talk about SkySearch")
 #each proxy (from https://spys.one/free-proxy-list/US/)
 #p = [{"https": "152.26.229.52:9443", "http": "154.16.146.46:80"},
 #        {"https": "69.49.228.101:3128", "http": "212.56.35.27:3128"},
@@ -34,7 +38,7 @@ if "g_mode" not in st.session_state:#game mode
     st.session_state.g_mode = False
 if "url" not in st.session_state:#keeps track of the url of the current page.
     st.session_state.url = ""#used for reloading the page
-use_proxies = st.toggle("Use proxies? Not recommended unless on a very restricted network.")
+use_proxies = st.toggle("Use proxies? Not recommended unless search is not working")
 def search_duckduckgo(query):
     #url = "https://duckduckgo.com/html/"
     #params = {"q": query}
@@ -138,10 +142,12 @@ def fetch_and_inject_css(html_content,url):#add the css files into the html
         
         #find all <link> tags that link to CSS files
         link_tags = soup.find_all('link', rel='stylesheet')
-        
+        status = st.empty()
         for link in link_tags:
             css_url = link['href']
-            
+            print("Loading "+css_url)
+            with status.container():
+                st.status("Loading "+css_url)
             #fetch the CSS content
             try:
                 if use_proxies:
@@ -186,7 +192,11 @@ def inject_js_to_html(html_content, url):
     
         #step 3: Download the JS files
         js_contents = {}
+        status = st.empty
         for js_file in js_files:
+            print("Loading "+js_file)
+            with status.container():
+                st.status("Loading "+js_file)
             js_url = ensure_has_base_link(js_file, url)
             if use_proxies:
                 for proxy in st.session_state.p:
@@ -248,9 +258,9 @@ if st.session_state.html == "":
             for link in links:
                 c1, c2 = st.columns(2)
                 with c1:
-                    st.link_button(link["title"], link["href"])
+                    st.link_button("Open new tab (exits SkySearch) "+link["title"], link["href"])
                 with c2:
-                    text = "View Site ("+link["title"]+")"
+                    text = "View Site within SkySearch ("+link["title"]+")"
                     if st.button(text, key = str(st.session_state.b_id)):
                         load_page(link["href"])
                     st.session_state.b_id += 1
@@ -273,6 +283,7 @@ else:#we are now rendering the html
     if st.session_state.g_mode == False:
         click_id = click_detector(st.session_state.html)#render html and find clicks
         if click_id:
+            print(click_id)
             with spinner_slot.container():
                 load_page(click_id)
     else:
