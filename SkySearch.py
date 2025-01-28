@@ -6,7 +6,7 @@ from st_click_detector import click_detector
 import urllib.parse#for getting base urls of pages
 st.set_page_config("SkySearch", layout="wide")#layout wide allows for canvases to be better (viewing in the web)
 st.title("SkySearch Proxy Engine")
-st.caption("Version 1.5b")
+st.caption("Version 1.6a")
 st.write("----RULES----")
 st.caption("1. Do not talk about SkySearch")
 st.caption("2. Do NOT talk about SkySearch")
@@ -245,9 +245,12 @@ def load_page(url):#loads the page, fully parsed with js, css, etc
         st.session_state.html = html#update html
         st.session_state.url = url#make sure we are storing the right url of the page we're on
         #get the title of the page we're on, so that we can serve it to the user
-        soup = BeautifulSoup(html, 'html.parser')
-        title = soup.title.string
-        st.session_state.site_title = title
+        try:
+            soup = BeautifulSoup(html, 'html.parser')
+            title = soup.title.string
+            st.session_state.site_title = title
+        except:
+            st.session_state.site_title = ""
         st.rerun()#rerun
 if st.session_state.html == "":
     query = st.text_input("Input your query to search here: ")
