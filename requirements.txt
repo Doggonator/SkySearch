@@ -3,4 +3,3 @@ bs4
 requests
 duckduckgo-search
 st-click-detector
-selenium
