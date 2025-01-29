@@ -4,9 +4,10 @@ from bs4 import BeautifulSoup
 from duckduckgo_search import DDGS
 from st_click_detector import click_detector
 import urllib.parse#for getting base urls of pages
+from fake_useragent import UserAgent
 st.set_page_config("SkySearch", layout="wide")#layout wide allows for canvases to be better (viewing in the web)
 st.title("SkySearch Proxy Engine")
-st.caption("Version 1.6a")
+st.caption("Version 1.6b")
 st.write("----RULES----")
 st.caption("1. Do not talk about SkySearch")
 st.caption("2. Do NOT talk about SkySearch")
@@ -40,6 +41,15 @@ if "url" not in st.session_state:#keeps track of the url of the current page.
     st.session_state.url = ""#used for reloading the page
 if "site_title" not in st.session_state:
     st.session_state.site_title = ""
+#headers to make sure we look like a proper browser
+headers = {
+    'Accept': 'text/html',
+    'Accept-Encoding': '*',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Connection': 'keep-alive',
+    'Upgrade-Insecure-Requests': '1',
+    'Cache-Control': 'max-age=0',
+}
 use_proxies = st.toggle("Use proxies? Not recommended unless search is not working")
 def search_duckduckgo(query):
     #url = "https://duckduckgo.com/html/"
@@ -78,26 +88,33 @@ def search_duckduckgo(query):
             return None
 def get_html_from_site(url):
     i = 1
-    for proxies in st.session_state.p:
-        try:
-            #send the search request through the proxy
-            if use_proxies:
-                response = requests.get(url, proxies=proxies, timeout=5)#5 second timeout, using the proxies
-                response.raise_for_status()  #raise an error for bad HTTP responses
-                #swap out to use the best proxy we have, which is this one, if it is not the first in the list already
-                if i != 1:
-                    this = st.session_state.p[i-1]#make a temp
-                    st.session_state.p[i-1] = st.session_state.p[0]#replace this with index 0
-                    st.session_state.p[0] = this#Set index zero to this
-                   
-                return response.text
-            else:
-                response = requests.get(url, timeout=5)#5 second timeout, using the proxies
-                response.raise_for_status()  #raise an error for bad HTTP responses
-                return response.text
-        except requests.exceptions.RequestException as e:
-            print(f"Error: {e}")
-        i += 1
+    headers['Referer'] = url#make it look like we are coming from the url we are searching
+    headers['Origin'] = url#same thing
+    ua = UserAgent()#make us have a fake useragent, too, to make the requests look better on more sites
+    headers['User-Agent'] = ua.random
+    with requests.Session() as session:
+        response = session.get(url)#get any cookies we may need by polling the url once
+        session.headers.update(headers)
+        for proxies in st.session_state.p:
+            try:
+                #send the search request through the proxy
+                if use_proxies:
+                    response = session.get(url, proxies=proxies, timeout=5, headers=headers)#5 second timeout, using the proxies
+                    response.raise_for_status()  #raise an error for bad HTTP responses
+                    #swap out to use the best proxy we have, which is this one, if it is not the first in the list already
+                    if i != 1:
+                        this = st.session_state.p[i-1]#make a temp
+                        st.session_state.p[i-1] = st.session_state.p[0]#replace this with index 0
+                        st.session_state.p[0] = this#Set index zero to this
+                    
+                    return response.text
+                else:
+                    response = session.get(url, timeout=5, headers=headers)#5 second timeout, using the proxies
+                    response.raise_for_status()  #raise an error for bad HTTP responses
+                    return response.text
+            except requests.exceptions.RequestException as e:
+                print(f"Error: {e}")
+            i += 1
 #def extract_links(html):
 #    #parse response
 #    soup = BeautifulSoup(html, "html.parser")
@@ -154,7 +171,7 @@ def fetch_and_inject_css(html_content,url):#add the css files into the html
                 if use_proxies:
                     for proxy in st.session_state.p:
                         try:
-                            response = requests.get(ensure_has_base_link(css_url, url), proxies = proxy, timeout = 5)
+                            response = requests.get(ensure_has_base_link(css_url, url), proxies = proxy, timeout = 5, headers=headers)
                             response.raise_for_status()
                             css_content = response.text
                             
@@ -201,7 +218,7 @@ def inject_js_to_html(html_content, url):
             if use_proxies:
                 for proxy in st.session_state.p:
                     try:
-                        js_response = requests.get(js_url, proxies = proxy, timeout = 5)
+                        js_response = requests.get(js_url, proxies = proxy, timeout = 5, headers=headers)
                         js_contents[js_file] = js_response.text
                     except:
                         print("Likely timed out with proxy: "+proxy)
