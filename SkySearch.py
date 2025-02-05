@@ -248,17 +248,15 @@ def load_page(url):#loads the page, fully parsed with js, css, etc
         with container.container():
             st.status("Loading HTML")
         html = get_html_from_site(url)#get html
-        if (html == ""):
-            st.error("Failed to get HTML from site")
-        else:
-            with container.container():
-                st.status("Loading JS")
-            html = inject_js_to_html(html, url)#inject js
-            with container.container():
-                st.status("Loading CSS")
-            html = fetch_and_inject_css(html, url)#inject css
-            with container.container():
-                st.status("Adding Link IDs")
+        with container.container():
+            st.status("Loading JS")
+        html = inject_js_to_html(html, url)#inject js
+        with container.container():
+            st.status("Loading CSS")
+        html = fetch_and_inject_css(html, url)#inject css
+        with container.container():
+            st.status("Adding Link IDs")
+        if html != None:
             html = add_link_ids(html, url)#add link ids for click detection
             if st.session_state.html == html:#make sure we don't have an infinite update loop occur where the user is stuck
                 html += "1"
@@ -272,6 +270,8 @@ def load_page(url):#loads the page, fully parsed with js, css, etc
             except:
                 st.session_state.site_title = ""
             st.rerun()#rerun
+        else:
+            st.error("Failed to process html properly.")
 if st.session_state.html == "":
     query = st.text_input("Input your query to search here: ")
     if query != "":
