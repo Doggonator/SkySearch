@@ -5,13 +5,16 @@ from duckduckgo_search import DDGS
 from st_click_detector import click_detector
 import urllib.parse#for getting base urls of pages
 from fake_useragent import UserAgent
+from streamlit_javascript import st_javascript
+import re
 st.set_page_config("SkySearch", layout="wide")#layout wide allows for canvases to be better (viewing in the web)
-st.title("SkySearch Proxy Engine")
-st.caption("Version 1.6c")
-st.write("----RULES----")
-st.caption("1. Do not talk about SkySearch")
-st.caption("2. Do NOT talk about SkySearch")
-st.caption("3. Protect SkySearch from anyone who may want to take it down")
+headers = {#human-like headers
+    'Accept': 'text/html',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Connection': 'keep-alive',
+    'Upgrade-Insecure-Requests': '1',
+    'Cache-Control': 'max-age=0',
+}
 #each proxy (from https://spys.one/free-proxy-list/US/)
 #p = [{"https": "152.26.229.52:9443", "http": "154.16.146.46:80"},
 #        {"https": "69.49.228.101:3128", "http": "212.56.35.27:3128"},
@@ -41,16 +44,6 @@ if "url" not in st.session_state:#keeps track of the url of the current page.
     st.session_state.url = ""#used for reloading the page
 if "site_title" not in st.session_state:
     st.session_state.site_title = ""
-#headers to make sure we look like a proper browser
-headers = {
-    'Accept': 'text/html',
-    'Accept-Encoding': '*',
-    'Accept-Language': 'en-US,en;q=0.9',
-    'Connection': 'keep-alive',
-    'Upgrade-Insecure-Requests': '1',
-    'Cache-Control': 'max-age=0',
-}
-use_proxies = st.toggle("Use proxies? Not recommended unless search is not working")
 def search_duckduckgo(query):
     #url = "https://duckduckgo.com/html/"
     #params = {"q": query}
@@ -98,7 +91,7 @@ def get_html_from_site(url):
         for proxies in st.session_state.p:
             try:
                 #send the search request through the proxy
-                if use_proxies:
+                if len(st.query_params) == 0 and use_proxies:
                     response = session.get(url, proxies=proxies, timeout=5, headers=headers)#5 second timeout, using the proxies
                     response.raise_for_status()  #raise an error for bad HTTP responses
                     #swap out to use the best proxy we have, which is this one, if it is not the first in the list already
@@ -106,7 +99,7 @@ def get_html_from_site(url):
                         this = st.session_state.p[i-1]#make a temp
                         st.session_state.p[i-1] = st.session_state.p[0]#replace this with index 0
                         st.session_state.p[0] = this#Set index zero to this
-                    
+                
                     return response.text
                 else:
                     response = session.get(url, timeout=5, headers=headers)#5 second timeout, using the proxies
@@ -119,7 +112,7 @@ def get_html_from_site(url):
 #    #parse response
 #    soup = BeautifulSoup(html, "html.parser")
 #    links = []
-#   
+#  
 #    #find result links
 #    for link in soup.find_all("a", class_="result__a"):
 #        href = link.get("href")
@@ -158,7 +151,7 @@ def fetch_and_inject_css(html_content,url):#add the css files into the html
     try:#in case proxy errors
         #parse the HTML
         soup = BeautifulSoup(html_content, 'html.parser')
-        
+    
         #find all <link> tags that link to CSS files
         link_tags = soup.find_all('link', rel='stylesheet')
         status = st.empty()
@@ -174,11 +167,11 @@ def fetch_and_inject_css(html_content,url):#add the css files into the html
                             response = requests.get(ensure_has_base_link(css_url, url), proxies = proxy, timeout = 5, headers=headers)
                             response.raise_for_status()
                             css_content = response.text
-                            
+                        
                             #create a <style> tag with the fetched CSS
                             style_tag = soup.new_tag('style')
                             style_tag.string = css_content
-                            
+                        
                             #replace the <link> tag with the <style> tag
                             link.replace_with(style_tag)
                         except:
@@ -187,16 +180,16 @@ def fetch_and_inject_css(html_content,url):#add the css files into the html
                     response = requests.get(ensure_has_base_link(css_url, url))
                     response.raise_for_status()
                     css_content = response.text
-                    
+                
                     #create a <style> tag with the fetched CSS
                     style_tag = soup.new_tag('style')
                     style_tag.string = css_content
-                    
+                
                     #replace the <link> tag with the <style> tag
                     link.replace_with(style_tag)
             except requests.RequestException as e:
                 print(f"Failed to fetch CSS from {css_url}: {e}")
-        
+    
         # Return the modified HTML
         return str(soup)
     except:
@@ -204,10 +197,10 @@ def fetch_and_inject_css(html_content,url):#add the css files into the html
 def inject_js_to_html(html_content, url):
     try:#in case there are problems with the proxies
         soup = BeautifulSoup(html_content, 'html.parser')
-    
+
         #find all <script> tags that reference external JS files
         js_files = [script['src'] for script in soup.find_all('script', src=True)]
-    
+
         #step 3: Download the JS files
         js_contents = {}
         status = st.empty
@@ -225,7 +218,7 @@ def inject_js_to_html(html_content, url):
             else:
                 js_response = requests.get(js_url)
                 js_contents[js_file] = js_response.text
-    
+
         #step 4: inject JS files into the HTML
         for js_file, js_content in js_contents.items():
             #inject the JS content directly into the HTML using a <script> tag
@@ -242,6 +235,31 @@ def add_link_ids(html, link):#link is used to add if we are referencing internal
                 #we need to figure out if this link is referencing a page of the same site or another site
                 tag['id'] = ensure_has_base_link(tag['href'], link)
     return str(soup)
+def rebuild_iframes(html):#make the iframes point back to this app
+    self_url = st_javascript("await fetch('').then(r => window.parent.location.href)")
+    soup = BeautifulSoup(html, 'html.parser')
+    for i, iframe in enumerate(soup.find_all("iframe")):#for each iframe
+        original_src = iframe.get("src", "")#find the orig source
+        iframe["src"] = self_url+"/?url="+original_src#and add our url to it
+    return str(html)#re-parse the html
+def ensure_link_function(html, url_plus):#some links just say something like /page, without the base url. We need to attach the base to everything
+    if url_plus[-1] == "/":#remove last unnecessary /
+        url = url_plus[:-1]
+    else:
+        url = url_plus
+    soup = BeautifulSoup(html, 'html.parser')
+    for tag in soup.find_all('a', href=True):#add the base link for 'a' tags
+        if "http" not in tag['href']:
+            tag['href'] = url+tag['href']
+    for button in soup.find_all('button', onclick=True):#change onclick buttons
+        match = re.search(r"location\.href=['\"](.*?)['\"]", button['onclick'])
+        if match:
+            original_url = match.group(1)
+            if "http" not in original_url:
+                new_url = url+original_url
+                button['onclick'] = f"location.href='{new_url}'"
+    
+    return str(soup)
 def load_page(url):#loads the page, fully parsed with js, css, etc
     container = st.empty()#status updates
     with st.spinner("Loading site..."):
@@ -254,12 +272,19 @@ def load_page(url):#loads the page, fully parsed with js, css, etc
         with container.container():
             st.status("Loading CSS")
         html = fetch_and_inject_css(html, url)#inject css
+        #add proper base links
+        with container.container():
+            st.status("Ensuring link function")
+        html = ensure_link_function(html, url)
         with container.container():
             st.status("Adding Link IDs")
         if html != None:
             html = add_link_ids(html, url)#add link ids for click detection
+            with container.container():#parse iframes to point back to this url
+                st.status("Parsing iframes")
+            html = rebuild_iframes(html)
             if st.session_state.html == html:#make sure we don't have an infinite update loop occur where the user is stuck
-                html += "1"
+                html += " "
             st.session_state.html = html#update html
             st.session_state.url = url#make sure we are storing the right url of the page we're on
             #get the title of the page we're on, so that we can serve it to the user
@@ -272,50 +297,71 @@ def load_page(url):#loads the page, fully parsed with js, css, etc
             st.rerun()#rerun
         else:
             st.error("Failed to process html properly.")
-if st.session_state.html == "":
-    query = st.text_input("Input your query to search here: ")
-    if query != "":
+if len(st.query_params) == 0:
+    st.title("SkySearch Proxy Engine")
+    st.caption("Version 1.7")
+    st.caption("Don't talk about SkySearch")
+    use_proxies = st.toggle("Use proxies? Not recommended unless search is not working")
+    if st.session_state.html == "" and "query_buttons" not in st.session_state:
+        query = st.text_input("Input your query to search here: ")
+        if query != "":
+            result = search_duckduckgo(query)
+            if result:
+                #links = extract_links(result)
+                #print(links)
+                #if len(links) == 0:
+                #    st.error("Search backend rate limit error, please try again later")
+                links = result
+                #Turn those links into buttons that go to the webpage
+                st.session_state.query_buttons = []
+                for link in links:
+                    st.session_state.query_buttons.append([link["title"], link["href"]])
+                st.rerun()#load the buttons properly
+            else:
+                st.error("Search failed, likely due to a proxy failure or a lack of response from our search backend")
+        url_in = st.text_input("Or input a full url here: ")
+        if url_in != "":
+            print(st.session_state.html)
+            load_page(url_in)
+    elif "query_buttons" in st.session_state:
         st.session_state.b_id = 0
-        result = search_duckduckgo(query)
-        if result:
-            #links = extract_links(result)
-            #print(links)
-            #if len(links) == 0:
-            #    st.error("Search backend rate limit error, please try again later")
-            links = result
-            #Turn those links into buttons that go to the webpage
-            for link in links:
-                c1, c2 = st.columns(2)
-                with c1:
-                    st.link_button("Open new tab (exits SkySearch) "+link["title"], link["href"])
-                with c2:
-                    text = "View Site within SkySearch ("+link["title"]+")"
-                    if st.button(text, key = str(st.session_state.b_id)):
-                        load_page(link["href"])
-                    st.session_state.b_id += 1
+        for button in st.session_state.query_buttons:
+            text = "View Site within SkySearch ("+button[0]+")"
+            if st.button(text, key = str(st.session_state.b_id)):
+                del st.session_state["query_buttons"]
+                load_page(button[1])
+            st.session_state.b_id += 1
+    else:#we are now rendering the html
+        spinner_slot = st.empty()
+        if st.button("Back to search"):#back to search button, which must be above the html
+            st.session_state.html = ""
+            st.rerun()#go back to search
+        st.caption("Game mode disables links, but allows games to function. It may help for other things like video playback")
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("Toggle game mode (Currently active: "+str(st.session_state.g_mode)+")"):#Allows games to work better if we use a different canvas type
+                st.session_state.g_mode = not st.session_state.g_mode
+                st.rerun()
+        with c2:
+            if st.button("Reload page"):
+                load_page(st.session_state.url)
+        st.write(st.session_state.site_title)
+        st.caption(st.session_state.url)
+        st.caption("Websites with complex animations, such as Poki, may not function as intended. Try searching for what you want")
+        if st.session_state.g_mode == False:
+            click_id = click_detector(st.session_state.html)#render html and find clicks
+            if click_id:
+                with spinner_slot.container():
+                    load_page(click_id)
         else:
-            st.error("Search failed, likely due to a proxy failure or a lack of response from our search backend")
-else:#we are now rendering the html
-    spinner_slot = st.empty()
-    if st.button("Back to search"):#back to search button, which must be above the html
-        st.session_state.html = ""
-        st.rerun()#go back to search
-    st.caption("Game mode disables links, but allows games to function. It may help for other things like video playback")
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("Toggle game mode (Currently active: "+str(st.session_state.g_mode)+")"):#Allows games to work better if we use a different canvas type
-            st.session_state.g_mode = not st.session_state.g_mode
-            st.rerun()
-    with c2:
-        if st.button("Reload page"):
-            load_page(st.session_state.url)
-    st.write(st.session_state.site_title)
-    st.caption(st.session_state.url)
-    st.caption("Websites with complex animations, such as Poki, may not function as intended. Try searching for what you want")
-    if st.session_state.g_mode == False:
-        click_id = click_detector(st.session_state.html)#render html and find clicks
-        if click_id:
-            with spinner_slot.container():
-                load_page(click_id)
-    else:
-        st.components.v1.html(st.session_state.html, scrolling = True, height = 600)
+            st.components.v1.html(st.session_state.html, scrolling = True, height = 600)
+else:
+    print("Iframe loaded")
+    try:
+        if st.session_state.html == "":
+            load_page(st.query_params["url"])
+        else:
+            st.components.v1.html(st.session_state.html, scrolling = True, height = 6000)
+    except Exception as e:
+        st.error("Incorrect url arguments provided. Try removing these and going to the base url.")
+        print(str(e))
