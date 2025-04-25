@@ -280,7 +280,10 @@ def load_page(url):#loads the page, fully parsed with js, css, etc
         #add proper base links
         with container.container():
             st.status("Ensuring link function")
-        html = ensure_link_function(str(html), url)
+        if html == None:
+            st.error("Website refused to return html.")
+            return 0
+        html = ensure_link_function(html, url)
         with container.container():
             st.status("Adding Link IDs")
         if html != None:
@@ -304,7 +307,7 @@ def load_page(url):#loads the page, fully parsed with js, css, etc
             st.error("Failed to process html properly.")
 if len(st.query_params) == 0:
     st.title("SkySearch Proxy Engine")
-    st.caption("Version 1.7c")
+    st.caption("Version 1.7d")
     st.caption("Don't talk about SkySearch")
     use_proxies = st.toggle("Use proxies? Not recommended unless search is not working")
     if st.session_state.html == "" and "query_buttons" not in st.session_state:
