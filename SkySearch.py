@@ -8,12 +8,16 @@ from fake_useragent import UserAgent
 from streamlit_javascript import st_javascript
 import re
 st.set_page_config("SkySearch", layout="wide")#layout wide allows for canvases to be better (viewing in the web)
+self_url = st_javascript("await fetch('').then(r => window.parent.location.href)")#find the url of ourself
 headers = {#human-like headers
     'Accept': 'text/html',
     'Accept-Language': 'en-US,en;q=0.9',
     'Connection': 'keep-alive',
     'Upgrade-Insecure-Requests': '1',
     'Cache-Control': 'max-age=0',
+    'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "#make a better user agent
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/90.0.4430.212 Safari/537.36"
 }
 #each proxy (from https://spys.one/free-proxy-list/US/)
 #p = [{"https": "152.26.229.52:9443", "http": "154.16.146.46:80"},
@@ -108,6 +112,7 @@ def get_html_from_site(url):
             except requests.exceptions.RequestException as e:
                 print(f"Error: {e}")
             i += 1
+
 #def extract_links(html):
 #    #parse response
 #    soup = BeautifulSoup(html, "html.parser")
@@ -234,9 +239,9 @@ def add_link_ids(html, link):#link is used to add if we are referencing internal
             if tag.has_attr('href'):#add tags to the valid links that go to another site
                 #we need to figure out if this link is referencing a page of the same site or another site
                 tag['id'] = ensure_has_base_link(tag['href'], link)
+                tag['href'] = self_url#we don't want the iframe to have some blocker detect a changed url and temp ban the user.
     return str(soup)
 def rebuild_iframes(html):#make the iframes point back to this app
-    self_url = st_javascript("await fetch('').then(r => window.parent.location.href)")
     soup = BeautifulSoup(html, 'html.parser')
     for i, iframe in enumerate(soup.find_all("iframe")):#for each iframe
         original_src = iframe.get("src", "")#find the orig source
@@ -275,7 +280,7 @@ def load_page(url):#loads the page, fully parsed with js, css, etc
         #add proper base links
         with container.container():
             st.status("Ensuring link function")
-        html = ensure_link_function(html, url)
+        html = ensure_link_function(str(html), url)
         with container.container():
             st.status("Adding Link IDs")
         if html != None:
@@ -299,7 +304,7 @@ def load_page(url):#loads the page, fully parsed with js, css, etc
             st.error("Failed to process html properly.")
 if len(st.query_params) == 0:
     st.title("SkySearch Proxy Engine")
-    st.caption("Version 1.7")
+    st.caption("Version 1.7b")
     st.caption("Don't talk about SkySearch")
     use_proxies = st.toggle("Use proxies? Not recommended unless search is not working")
     if st.session_state.html == "" and "query_buttons" not in st.session_state:
@@ -321,8 +326,11 @@ if len(st.query_params) == 0:
                 st.error("Search failed, likely due to a proxy failure or a lack of response from our search backend")
         url_in = st.text_input("Or input a full url here: ")
         if url_in != "":
-            print(st.session_state.html)
-            load_page(url_in)
+            try:
+                load_page(url_in)
+            except Exception as e:
+                st.error("Error, probably caused by faulty url. Does your input have https:// or http://")
+                print(str(e))
     elif "query_buttons" in st.session_state:
         st.session_state.b_id = 0
         for button in st.session_state.query_buttons:
