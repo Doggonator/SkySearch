@@ -304,7 +304,7 @@ def load_page(url):#loads the page, fully parsed with js, css, etc
             st.error("Failed to process html properly.")
 if len(st.query_params) == 0:
     st.title("SkySearch Proxy Engine")
-    st.caption("Version 1.7b")
+    st.caption("Version 1.7c")
     st.caption("Don't talk about SkySearch")
     use_proxies = st.toggle("Use proxies? Not recommended unless search is not working")
     if st.session_state.html == "" and "query_buttons" not in st.session_state:
@@ -334,7 +334,7 @@ if len(st.query_params) == 0:
     elif "query_buttons" in st.session_state:
         st.session_state.b_id = 0
         for button in st.session_state.query_buttons:
-            text = "View Site within SkySearch ("+button[0]+")"
+            text = "View Site within SkySearch ("+button[1]+": "+button[0]+")"
             if st.button(text, key = str(st.session_state.b_id)):
                 del st.session_state["query_buttons"]
                 load_page(button[1])
