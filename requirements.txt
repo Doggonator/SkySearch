@@ -5,3 +5,4 @@ duckduckgo-search
 st-click-detector
 fake-useragent
 streamlit-javascript
+googlesearch-python

@@ -7,6 +7,7 @@ import urllib.parse#for getting base urls of pages
 from fake_useragent import UserAgent
 from streamlit_javascript import st_javascript
 import re
+from googlesearch import search
 st.set_page_config("SkySearch", layout="wide")#layout wide allows for canvases to be better (viewing in the web)
 self_url = st_javascript("await fetch('').then(r => window.parent.location.href)")#find the url of ourself
 headers = {#human-like headers
@@ -307,7 +308,7 @@ def load_page(url):#loads the page, fully parsed with js, css, etc
             st.error("Failed to process html properly.")
 if len(st.query_params) == 0:
     st.title("SkySearch Proxy Engine")
-    st.caption("Version 1.7d")
+    st.caption("Version 1.8")
     st.caption("Don't talk about SkySearch")
     use_proxies = st.toggle("Use proxies? Not recommended unless search is not working")
     if st.session_state.html == "" and "query_buttons" not in st.session_state:
@@ -325,8 +326,36 @@ if len(st.query_params) == 0:
                 for link in links:
                     st.session_state.query_buttons.append([link["title"], link["href"]])
                 st.rerun()#load the buttons properly
-            else:
-                st.error("Search failed, likely due to a proxy failure or a lack of response from our search backend")
+            else:#try google search instead
+                results = []
+                st.info("Search failed, trying a different search backend")
+                if not use_proxies:
+                    for result in search(query, num_results = 10, advanced=True):
+                        if (result in results) == False:
+                            results.append(result)
+                    if len(results) > 0:
+                        st.session_state.query_buttons = []
+                        for link in results:
+                            st.session_state.query_buttons.append([link.title, link.url])
+                        st.rerun()#load the link buttons
+                    else:
+                        st.error("All search backends failed. Try inputting a url instead.")
+                if use_proxies:
+                    for proxy in st.session_state.p:
+                        try:
+                            for result in search(query, num_results = 10, proxy=proxy["https"], advanced=True):
+                                if (result in results) == False:
+                                    results.append(result)
+                            if len(results) > 0:
+                                st.session_state.query_buttons = []
+                                for link in results:
+                                    st.session_state.query_buttons.append([link.title, link.url])
+                                st.rerun()#load the link buttons
+                        except Exception as e:
+                            print("Google proxy failed "+str(e))
+                            #proxy failed. Onto next proxy
+                            pass
+                    st.error("All search backends failed. Try inputting a url instead.")#if we get here, search has failed
         url_in = st.text_input("Or input a full url here: ")
         if url_in != "":
             try:
